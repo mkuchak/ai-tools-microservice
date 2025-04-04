@@ -15,6 +15,7 @@ from pydub import AudioSegment
 from encryption import decrypt
 from youtube_transcript_api import YouTubeTranscriptApi, NoTranscriptFound, VideoUnavailable
 from youtube_transcript_api.proxies import GenericProxyConfig
+from flask_cors import CORS
 
 # Load environment variables from .env file
 load_dotenv()
@@ -39,6 +40,8 @@ SUPPORTED_LANGUAGES = {
 os.makedirs(TEMP_DIR, exist_ok=True)
 
 app = Flask(__name__)
+# Enable CORS for all routes and origins
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 # Force stdout to be line-buffered for Docker logs
 sys.stdout.reconfigure(line_buffering=True)
