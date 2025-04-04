@@ -7,7 +7,7 @@ import schedule
 import threading
 import re
 from datetime import datetime
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, Response, stream_with_context
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
 import fal_client
@@ -42,6 +42,12 @@ os.makedirs(TEMP_DIR, exist_ok=True)
 app = Flask(__name__)
 # Enable CORS for all routes and origins
 CORS(app, resources={r"/*": {"origins": "*"}})
+# Increase maximum file upload size to match our 2GB limit
+app.config['MAX_CONTENT_LENGTH'] = MAX_FILE_SIZE
+# Enable streaming uploads
+app.config['MAX_CONTENT_LENGTH'] = None  # Disable content length limit
+# Increase request timeout (in seconds) if using Werkzeug directly
+app.config['TIMEOUT'] = 3600  # 1 hour
 
 # Force stdout to be line-buffered for Docker logs
 sys.stdout.reconfigure(line_buffering=True)
@@ -149,14 +155,6 @@ def transcribe_file():
     if not allowed_file(file.filename):
         return jsonify({"error": "File format not accepted"}), 400
     
-    # Check file size
-    file.seek(0, os.SEEK_END)
-    file_size = file.tell()
-    file.seek(0)
-    
-    if file_size > MAX_FILE_SIZE:
-        return jsonify({"error": f"File too large, maximum size is {MAX_FILE_SIZE / (1024 * 1024 * 1024):.1f} GB"}), 400
-    
     # Get language parameter (default to English if not provided)
     language = request.form.get('language', 'en').lower()
     
@@ -181,10 +179,26 @@ def transcribe_file():
         return jsonify({"error": "Failed to decrypt FAL API key"}), 400
     
     try:
-        # Save file to temp directory
+        # Save file to temp directory with streaming approach to handle large files
         filename = secure_filename(file.filename)
         original_file_path = os.path.join(TEMP_DIR, filename)
-        file.save(original_file_path)
+        
+        # Stream the file to disk instead of loading it all into memory
+        with open(original_file_path, 'wb') as f:
+            chunk_size = 4096  # 4KB chunks
+            while True:
+                chunk = file.read(chunk_size)
+                if not chunk:
+                    break
+                f.write(chunk)
+        
+        # Get file size after saving
+        file_size = os.path.getsize(original_file_path)
+        
+        # Check file size after saving
+        if file_size > MAX_FILE_SIZE:
+            os.remove(original_file_path)
+            return jsonify({"error": f"File too large, maximum size is {MAX_FILE_SIZE / (1024 * 1024 * 1024):.1f} GB"}), 400
         
         # Convert to mp3
         mp3_filename = f"{os.path.splitext(filename)[0]}.mp3"

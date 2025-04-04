@@ -20,6 +20,8 @@ EXPOSE 5000
 
 # Set environment variables for Python
 ENV PYTHONUNBUFFERED=1
+# Increase timeout for large file uploads
+ENV WERKZEUG_SERVER_TIMEOUT=3600
 
 # Healthcheck
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 CMD curl -f http://localhost:5000/health || exit 1
