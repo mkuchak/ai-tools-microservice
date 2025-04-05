@@ -41,7 +41,7 @@ os.makedirs(TEMP_DIR, exist_ok=True)
 
 app = Flask(__name__)
 # Enable CORS for all routes and origins
-CORS(app, resources={r"/*": {"origins": "*"}})
+CORS(app, resources={r"/*": {"origins": "*", "allow_headers": "*", "expose_headers": "*"}})
 # Increase maximum file upload size to match our 2GB limit
 app.config['MAX_CONTENT_LENGTH'] = MAX_FILE_SIZE
 # Enable streaming uploads
