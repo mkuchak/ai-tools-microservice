@@ -11,6 +11,10 @@ services:
     container_name: ai-tools-microservice-api
     env_file:
       - .env
+    environment:
+      - PORT=${PORT}
+      - PYTHONUNBUFFERED=${PYTHONUNBUFFERED}
+      - SECRET_KEY=${SECRET_KEY}
     volumes:
       - ./temp:/app/temp
     healthcheck:
